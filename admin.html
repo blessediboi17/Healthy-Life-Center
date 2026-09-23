@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Healthy Life Center</title>
+<style>
+  :root{
+    --ink:#1c2e22; --paper:#f5f4ec; --paper-2:#e9e6d6;
+    --green:#254a34; --green-2:#3f7554; --clay:#a8462f;
+    --line: rgba(28,46,34,0.14); --radius:12px; --radius-sm:8px;
+    --shadow: 0 6px 20px rgba(28,46,34,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Work Sans","Segoe UI",Arial,sans-serif;font-size:15px;}
+  h1,h2,.serif{font-family:"Fraunces","Georgia",serif;font-weight:600;}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px;}
+  button{font-family:inherit;cursor:pointer;}
+  .icon{width:18px;height:18px;flex-shrink:0;}
+  input,textarea,select{
+    font-family:inherit;font-size:14px;padding:10px;border:1px solid var(--line);
+    border-radius:var(--radius-sm);background:#fff;width:100%;
+  }
+  label{font-size:13px;color:#4b5a4e;display:block;margin:10px 0 4px;}
+  .btn{
+    background:var(--ink);color:var(--paper);border:none;padding:10px 16px;
+    border-radius:var(--radius-sm);font-size:14px;display:inline-flex;align-items:center;gap:7px;
+  }
+  .btn.secondary{background:none;border:1px solid var(--ink);color:var(--ink);}
+  .btn.danger{background:none;border:1px solid var(--clay);color:var(--clay);}
+
+  #loginScreen{max-width:360px;margin:80px auto;padding:0 20px;}
+  #loginScreen .btn{width:100%;margin-top:14px;justify-content:center;}
+  .error{color:var(--clay);font-size:13px;margin-top:8px;}
+
+  #dashboard{display:none;}
+  header{border-bottom:1px solid var(--line);padding:16px 0;position:sticky;top:0;background:rgba(245,244,236,0.94);backdrop-filter:blur(6px);z-index:10;}
+  header .wrap{display:flex;justify-content:space-between;align-items:center;}
+  .brand{display:flex;align-items:center;gap:9px;font-size:19px;}
+  .brand .mark{width:30px;height:30px;border-radius:8px;background:var(--green);display:flex;align-items:center;justify-content:center;}
+  .brand .mark svg{width:16px;height:16px;}
+
+  .tabs-nav{display:flex;gap:6px;margin:22px 0;flex-wrap:wrap;}
+  .tabs-nav button{
+    background:#fff;border:1px solid var(--line);padding:9px 16px;border-radius:999px;font-size:14px;color:var(--ink);
+  }
+  .tabs-nav button.active{background:var(--green);color:#fff;border-color:var(--green);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:18px 0 28px;}
+  .stat-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;}
+  .stat-card .num{font-family:"Fraunces",serif;font-size:30px;font-weight:600;}
+  .stat-card .label{font-size:13px;color:#6b7a6e;margin-top:2px;}
+
+  .bars{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px;}
+  .bars h3{margin:0 0 14px;font-size:15px;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;}
+  .bar-row .day{width:70px;color:#6b7a6e;flex-shrink:0;}
+  .bar-track{flex:1;background:var(--paper-2);border-radius:6px;height:16px;overflow:hidden;}
+  .bar-fill{background:var(--green-2);height:100%;border-radius:6px;}
+  .bar-row .count{width:30px;text-align:right;flex-shrink:0;}
+
+  .card-block{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+  .form-grid .full{grid-column:1/-1;}
+  .save-row{margin-top:16px;display:flex;gap:10px;}
+
+  table{width:100%;border-collapse:collapse;margin-top:6px;}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top;}
+  td.thumb-cell img{width:46px;height:46px;object-fit:cover;border-radius:var(--radius-sm);}
+  .row-actions{display:flex;gap:12px;flex-wrap:wrap;}
+  .row-actions button{background:none;border:none;font-size:13px;text-decoration:underline;color:var(--ink);padding:0;}
+  .row-actions button.danger{color:var(--clay);}
+  .status{font-size:13px;margin-top:10px;}
+  .status.ok{color:var(--green-2);}
+  .status.err{color:var(--clay);}
+  .stock-tag{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--paper-2);}
+  .stock-tag.out{background:#f0d9cc;color:var(--clay);}
+
+  .inquiry-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;}
+  .inquiry-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .inquiry-head .who{font-weight:600;}
+  .inquiry-head .when{font-size:12px;color:#6b7a6e;}
+  .inquiry-msg{font-size:14px;margin:8px 0;color:#2c3c31;}
+  .inquiry-tag{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--paper-2);}
+  .inquiry-tag.resolved{background:#dcefe0;color:var(--green-2);}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <h1 class="serif">Admin login</h1>
+  <label>Email</label>
+  <input id="loginEmail" type="email" autocomplete="username">
+  <label>Password</label>
+  <input id="loginPassword" type="password" autocomplete="current-password">
+  <button class="btn" id="loginBtn">Log in</button>
+  <div class="error" id="loginError"></div>
+</div>
+
+<div id="dashboard">
+  <header>
+    <div class="wrap">
+      <div class="brand serif">
+        <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#f5f4ec" stroke-width="2"><path d="M12 3c5 0 9 4 9 9-5 0-9-4-9-9zm0 0C7 3 3 7 3 12c5 0 9-4 9-9zm0 6v9"/></svg></div>
+        Healthy Life Center — Admin
+      </div>
+      <button class="btn secondary" id="logoutBtn">Log out</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="tabs-nav">
+      <button class="active" data-panel="analytics">Analytics</button>
+      <button data-panel="products">Products</button>
+      <button data-panel="inquiries">Customer messages</button>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="panel active" id="panel-analytics">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="statToday">0</div><div class="label">Views today</div></div>
+        <div class="stat-card"><div class="num" id="statWeek">0</div><div class="label">Views, last 7 days</div></div>
+        <div class="stat-card"><div class="num" id="statAll">0</div><div class="label">Views, all time</div></div>
+        <div class="stat-card"><div class="num" id="statInquiries">0</div><div class="label">New messages</div></div>
+      </div>
+      <div class="bars">
+        <h3>Page views — last 7 days</h3>
+        <div id="barChart"></div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="panel" id="panel-products">
+      <div class="card-block">
+        <h2 class="serif" id="formTitle" style="margin-top:0;">Add a product</h2>
+        <div class="form-grid">
+          <div class="full">
+            <label>Product name</label>
+            <input id="f_name" type="text" placeholder="e.g. Fertility Tea">
+          </div>
+          <div>
+            <label>Category</label>
+            <input id="f_category" type="text" placeholder="e.g. Fertility, Prostate, Heart">
+          </div>
+          <div>
+            <label>Price</label>
+            <input id="f_price" type="number" step="0.01" placeholder="25.00">
+          </div>
+          <div class="full">
+            <label>Product image</label>
+            <input id="f_image" type="file" accept="image/*">
+            <div id="imgPreviewWrap" style="margin-top:8px;"></div>
+          </div>
+          <div class="full">
+            <label>Brief — what it's for / how it works</label>
+            <textarea id="f_description" rows="3" placeholder="Short description customers will see"></textarea>
+          </div>
+          <div class="full">
+            <label>How to use</label>
+            <textarea id="f_usage" rows="3" placeholder="Usage / dosage instructions"></textarea>
+          </div>
+          <div>
+            <label>In stock</label>
+            <select id="f_instock">
+              <option value="true">Yes</option>
+              <option value="false">No — sold out</option>
+            </select>
+          </div>
+        </div>
+        <div class="save-row">
+          <button class="btn" id="saveBtn">Save product</button>
+          <button class="btn secondary" id="cancelEditBtn" style="display:none;">Cancel edit</button>
+        </div>
+        <div class="status" id="formStatus"></div>
+      </div>
+
+      <div class="card-block">
+        <h2 class="serif" style="margin-top:0;">All products</h2>
+        <table>
+          <thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+          <tbody id="productRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- INQUIRIES -->
+    <div class="panel" id="panel-inquiries">
+      <div id="inquiryList"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============ CONFIG — edit these ============ */
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+const IMAGE_BUCKET = "product-images";
+/* ================================================ */
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let products = [];
+let editingId = null;
+let pendingImageFile = null;
+
+const loginScreen = document.getElementById("loginScreen");
+const dashboard = document.getElementById("dashboard");
+
+async function checkSession(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (session){ showDashboard(); }
+  else { loginScreen.style.display = "block"; dashboard.style.display = "none"; }
+}
+
+document.getElementById("loginBtn").addEventListener("click", async ()=>{
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errEl = document.getElementById("loginError");
+  errEl.textContent = "";
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error){ errEl.textContent = error.message; return; }
+  showDashboard();
+});
+document.getElementById("logoutBtn").addEventListener("click", async ()=>{ await sb.auth.signOut(); checkSession(); });
+
+function showDashboard(){
+  loginScreen.style.display = "none";
+  dashboard.style.display = "block";
+  loadProducts();
+  loadAnalytics();
+  loadInquiries();
+}
+
+/* ---- tab navigation ---- */
+document.querySelectorAll(".tabs-nav button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tabs-nav button").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.panel).classList.add("active");
+  });
+});
+
+/* ---- analytics ---- */
+async function loadAnalytics(){
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart); weekStart.setDate(weekStart.getDate() - 6);
+
+  const { count: allCount } = await sb.from("page_views").select("*", { count:"exact", head:true });
+  const { data: weekRows } = await sb.from("page_views").select("created_at").gte("created_at", weekStart.toISOString());
+
+  document.getElementById("statAll").textContent = allCount ?? 0;
+
+  const days = [];
+  for (let i=6;i>=0;i--){
+    const d = new Date(todayStart); d.setDate(d.getDate()-i);
+    days.push({ date:d, count:0 });
+  }
+  (weekRows||[]).forEach(row=>{
+    const rd = new Date(row.created_at);
+    const rDay = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate());
+    const match = days.find(d => d.date.getTime() === rDay.getTime());
+    if (match) match.count++;
+  });
+
+  document.getElementById("statWeek").textContent = days.reduce((s,d)=>s+d.count,0);
+  document.getElementById("statToday").textContent = days[days.length-1].count;
+
+  const max = Math.max(1, ...days.map(d=>d.count));
+  document.getElementById("barChart").innerHTML = days.map(d=>{
+    const label = d.date.toLocaleDateString(undefined, { weekday:"short" });
+    const pct = Math.round((d.count/max)*100);
+    return `
+      <div class="bar-row">
+        <div class="day">${label}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="count">${d.count}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ---- products ---- */
+async function loadProducts(){
+  const { data, error } = await sb.from("products").select("*").order("created_at", { ascending:false });
+  if (error){ console.error(error); return; }
+  products = data || [];
+  renderRows();
+}
+
+function renderRows(){
+  const tbody = document.getElementById("productRows");
+  if (!products.length){
+    tbody.innerHTML = `<tr><td colspan="6">No products yet — add your first one above.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = products.map(p => `
+    <tr>
+      <td class="thumb-cell">${p.image_url ? `<img src="${p.image_url}">` : ""}</td>
+      <td>${escapeHtml(p.name)}</td>
+      <td>${escapeHtml(p.category || "")}</td>
+      <td>$${Number(p.price).toFixed(2)}</td>
+      <td><span class="stock-tag ${p.in_stock===false?'out':''}">${p.in_stock===false?'Sold out':'In stock'}</span></td>
+      <td>
+        <div class="row-actions">
+          <button data-id="${p.id}" class="edit">Edit</button>
+          <button data-id="${p.id}" class="toggle-stock">${p.in_stock===false?'Mark in stock':'Mark sold out'}</button>
+          <button data-id="${p.id}" class="danger delete">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+
+  tbody.querySelectorAll(".edit").forEach(btn => btn.addEventListener("click", ()=> startEdit(btn.dataset.id)));
+  tbody.querySelectorAll(".delete").forEach(btn => btn.addEventListener("click", ()=> deleteProduct(btn.dataset.id)));
+  tbody.querySelectorAll(".toggle-stock").forEach(btn => btn.addEventListener("click", ()=> toggleStock(btn.dataset.id)));
+}
+
+async function toggleStock(id){
+  const p = products.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const { error } = await sb.from("products").update({ in_stock: p.in_stock === false }).eq("id", id);
+  if (error){ alert("Couldn't update: " + error.message); return; }
+  loadProducts();
+}
+
+function startEdit(id){
+  const p = products.find(x => String(x.id) === String(id));
+  if (!p) return;
+  editingId = id;
+  document.getElementById("formTitle").textContent = "Edit product";
+  document.getElementById("f_name").value = p.name || "";
+  document.getElementById("f_category").value = p.category || "";
+  document.getElementById("f_price").value = p.price ?? "";
+  document.getElementById("f_description").value = p.description || "";
+  document.getElementById("f_usage").value = p.usage_instructions || "";
+  document.getElementById("f_instock").value = p.in_stock === false ? "false" : "true";
+  document.getElementById("imgPreviewWrap").innerHTML = p.image_url ? `<img src="${p.image_url}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;">` : "";
+  document.getElementById("cancelEditBtn").style.display = "inline-flex";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
+
+function resetForm(){
+  editingId = null;
+  pendingImageFile = null;
+  document.getElementById("formTitle").textContent = "Add a product";
+  document.getElementById("f_name").value = "";
+  document.getElementById("f_category").value = "";
+  document.getElementById("f_price").value = "";
+  document.getElementById("f_description").value = "";
+  document.getElementById("f_usage").value = "";
+  document.getElementById("f_instock").value = "true";
+  document.getElementById("f_image").value = "";
+  document.getElementById("imgPreviewWrap").innerHTML = "";
+  document.getElementById("cancelEditBtn").style.display = "none";
+}
+
+document.getElementById("f_image").addEventListener("change", (e)=>{
+  pendingImageFile = e.target.files[0] || null;
+  if (pendingImageFile){
+    document.getElementById("imgPreviewWrap").innerHTML = `<img src="${URL.createObjectURL(pendingImageFile)}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;">`;
+  }
+});
+
+document.getElementById("saveBtn").addEventListener("click", async ()=>{
+  const statusEl = document.getElementById("formStatus");
+  statusEl.textContent = "Saving…"; statusEl.className = "status";
+
+  const name = document.getElementById("f_name").value.trim();
+  const price = parseFloat(document.getElementById("f_price").value);
+  if (!name || isNaN(price)){
+    statusEl.textContent = "Product name and a valid price are required.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const record = {
+    name,
+    category: document.getElementById("f_category").value.trim(),
+    price,
+    description: document.getElementById("f_description").value.trim(),
+    usage_instructions: document.getElementById("f_usage").value.trim(),
+    in_stock: document.getElementById("f_instock").value === "true"
+  };
+
+  try{
+    if (pendingImageFile){
+      const ext = pendingImageFile.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await sb.storage.from(IMAGE_BUCKET).upload(path, pendingImageFile);
+      if (upErr) throw upErr;
+      const { data: pub } = sb.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+      record.image_url = pub.publicUrl;
+    }
+    if (editingId){
+      const { error } = await sb.from("products").update(record).eq("id", editingId);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from("products").insert(record);
+      if (error) throw error;
+    }
+    statusEl.textContent = "Saved."; statusEl.className = "status ok";
+    resetForm();
+    loadProducts();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save: " + err.message;
+    statusEl.className = "status err";
+  }
+});
+
+async function deleteProduct(id){
+  if (!confirm("Delete this product? This can't be undone.")) return;
+  const { error } = await sb.from("products").delete().eq("id", id);
+  if (error){ alert("Couldn't delete: " + error.message); return; }
+  loadProducts();
+}
+
+/* ---- customer messages ---- */
+async function loadInquiries(){
+  const { data, error } = await sb.from("inquiries").select("*").order("created_at", { ascending:false });
+  if (error){ console.error(error); return; }
+  const list = data || [];
+  document.getElementById("statInquiries").textContent = list.filter(i => i.status !== "resolved").length;
+
+  const el = document.getElementById("inquiryList");
+  if (!list.length){ el.innerHTML = `<p style="color:#6b7a6e;">No customer messages yet.</p>`; return; }
+
+  el.innerHTML = list.map(i => `
+    <div class="inquiry-card">
+      <div class="inquiry-head">
+        <div>
+          <div class="who">${escapeHtml(i.name || "Anonymous")}${i.contact ? " · " + escapeHtml(i.contact) : ""}</div>
+          <div class="when">${new Date(i.created_at).toLocaleString()}</div>
+        </div>
+        <span class="inquiry-tag ${i.status==='resolved'?'resolved':''}">${i.status === "resolved" ? "Resolved" : "New"}</span>
+      </div>
+      <div class="inquiry-msg">${escapeHtml(i.message)}</div>
+      <div class="row-actions">
+        ${i.status !== "resolved" ? `<button class="mark-resolved" data-id="${i.id}">Mark resolved</button>` : ""}
+        <button class="danger delete-inquiry" data-id="${i.id}">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  el.querySelectorAll(".mark-resolved").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      await sb.from("inquiries").update({ status:"resolved" }).eq("id", btn.dataset.id);
+      loadInquiries();
+    });
+  });
+  el.querySelectorAll(".delete-inquiry").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if (!confirm("Delete this message?")) return;
+      await sb.from("inquiries").delete().eq("id", btn.dataset.id);
+      loadInquiries();
+    });
+  });
+}
+
+function escapeHtml(str){
+  if (str === null || str === undefined) return "";
+  return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+}
+
+checkSession();
+</script>
+</body>
+</html>
