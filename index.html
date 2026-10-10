@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#254a34">
 <title>Healthy Life Center</title>
+<meta name="description" content="Herbal remedies for fertility, prostate health, heart health and more. Add to cart, order on WhatsApp, we deliver.">
+<meta property="og:title" content="Healthy Life Center">
+<meta property="og:description" content="Herbal remedies for fertility, prostate health, heart health and more. Add to cart, order on WhatsApp, we deliver.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="og-image.png">
+<meta property="og:url" content="https://healthy-life-center.vercel.app">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Healthy Life Center">
+<meta name="twitter:description" content="Herbal remedies for fertility, prostate health, heart health and more. Order on WhatsApp, we deliver.">
+<meta name="twitter:image" content="og-image.png">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -100,6 +110,14 @@
     display:inline-flex;align-items:center;gap:8px;
     background:#25D366;color:#fff;padding:11px 20px;
     border-radius:999px;text-decoration:none;font-size:14px;
+  }
+
+  /* ---- search ---- */
+  .search-wrap{position:relative;margin-top:24px;max-width:420px;}
+  .search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:#6b7a6e;}
+  .search-wrap input{
+    width:100%;padding:11px 14px 11px 42px;border:1px solid var(--line);
+    border-radius:999px;font-size:14px;font-family:inherit;background:#fff;
   }
 
   /* ---- category tabs ---- */
@@ -278,6 +296,10 @@
 </section>
 
 <div class="wrap">
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input id="searchInput" type="text" placeholder="Search products…">
+  </div>
   <div class="tabs" id="tabs"></div>
   <div class="grid" id="grid"><div class="empty-msg">Loading products…</div></div>
 
@@ -372,8 +394,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============ CONFIG — edit these ============ */
-const SUPABASE_URL = "https://fynvgznbxkohscslrjxg.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5bnZnem5ieGtvaHNjc2xyanhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDcwNDQsImV4cCI6MjEwNTcyMzA0NH0.ErH6-ps5Rt4FA39kzbwNSqobWEKrjuI0wAQ4mLVk5Z8";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
 const WHATSAPP_NUMBER = "231770523365"; // Healthy Life Center — 0770523365 with Liberia country code
 const CURRENCY_SYMBOL = "$";
 const SOCIAL_LINKS = {
@@ -387,10 +409,16 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let products = [];
 let activeCategory = "All";
+let searchTerm = "";
 let cart = {};
 
 const grid = document.getElementById("grid");
 const tabsEl = document.getElementById("tabs");
+
+document.getElementById("searchInput").addEventListener("input", (e)=>{
+  searchTerm = e.target.value.trim();
+  renderGrid();
+});
 
 document.getElementById("heroWaLink").href = `https://wa.me/${WHATSAPP_NUMBER}`;
 document.getElementById("footWaLink").href = `https://wa.me/${WHATSAPP_NUMBER}`;
@@ -431,8 +459,15 @@ function renderTabs(){
 }
 
 function renderGrid(){
-  const list = activeCategory === "All" ? products : products.filter(p => p.category === activeCategory);
-  if (!list.length){ grid.innerHTML = `<div class="empty-msg">No products in this category yet.</div>`; return; }
+  let list = activeCategory === "All" ? products : products.filter(p => p.category === activeCategory);
+  if (searchTerm){
+    const q = searchTerm.toLowerCase();
+    list = list.filter(p => (p.name||"").toLowerCase().includes(q) || (p.category||"").toLowerCase().includes(q) || (p.description||"").toLowerCase().includes(q));
+  }
+  if (!list.length){
+    grid.innerHTML = `<div class="empty-msg">${searchTerm ? "No products match your search." : "No products in this category yet."}</div>`;
+    return;
+  }
   grid.innerHTML = list.map(cardHtml).join("");
 
   grid.querySelectorAll(".thumb, h3").forEach(el=>{
@@ -448,6 +483,12 @@ function renderGrid(){
     minus.addEventListener("click", ()=>{ qtyEl.textContent = Math.max(1, parseInt(qtyEl.textContent)-1); });
     plus.addEventListener("click", ()=>{ qtyEl.textContent = parseInt(qtyEl.textContent)+1; });
     addBtn.addEventListener("click", ()=>{ addToCart(id, parseInt(qtyEl.textContent)); qtyEl.textContent = "1"; });
+  });
+  grid.querySelectorAll(".notify-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const msg = `Hi! Please let me know when "${btn.dataset.name}" is back in stock.`;
+      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+    });
   });
 }
 
@@ -474,7 +515,7 @@ function cardHtml(p){
         </div>
         <button class="add-btn">${BAG_SVG} Add to cart</button>
       ` : `
-        <button class="add-btn" disabled>Sold out</button>
+        <button class="add-btn notify-btn" data-name="${escapeHtml(p.name)}" style="background:var(--clay);">${BAG_SVG} Notify me</button>
       `}
     </div>
   `;
@@ -555,12 +596,18 @@ document.getElementById("checkoutBtn").addEventListener("click", ()=>{
   if (!items.length) return;
   let msg = "Hi! I'd like to order:\n\n";
   let total = 0;
+  const orderItems = [];
   items.forEach(v=>{
     const lineTotal = v.product.price * v.qty;
     total += lineTotal;
     msg += `• ${v.product.name} x${v.qty} — ${CURRENCY_SYMBOL}${lineTotal.toFixed(2)}\n`;
+    orderItems.push({ name: v.product.name, qty: v.qty, price: v.product.price });
   });
   msg += `\nTotal: ${CURRENCY_SYMBOL}${total.toFixed(2)}\n\nPlease confirm availability and delivery details. Thank you!`;
+
+  // Log the order for the admin dashboard (fire and forget — never blocks checkout)
+  sb.from("orders").insert({ items: orderItems, total }).then(()=>{}, ()=>{});
+
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
 });
 
