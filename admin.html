@@ -113,6 +113,7 @@
   <div class="wrap">
     <div class="tabs-nav">
       <button class="active" data-panel="analytics">Analytics</button>
+      <button data-panel="orders">Orders</button>
       <button data-panel="products">Products</button>
       <button data-panel="inquiries">Customer messages</button>
     </div>
@@ -128,6 +129,25 @@
       <div class="bars">
         <h3>Page views — last 7 days</h3>
         <div id="barChart"></div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="panel" id="panel-orders">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="statOrdersToday">0</div><div class="label">Orders today</div></div>
+        <div class="stat-card"><div class="num" id="statOrdersWeek">0</div><div class="label">Orders, last 7 days</div></div>
+        <div class="stat-card"><div class="num" id="statRevenue">$0</div><div class="label">Revenue, all time</div></div>
+      </div>
+      <div class="card-block">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <h2 class="serif" style="margin:0;">Recent orders</h2>
+          <button class="btn secondary" id="exportOrdersBtn">Export CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>When</th><th>Items</th><th>Total</th></tr></thead>
+          <tbody id="orderRows"></tbody>
+        </table>
       </div>
     </div>
 
@@ -177,7 +197,10 @@
       </div>
 
       <div class="card-block">
-        <h2 class="serif" style="margin-top:0;">All products</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 class="serif" style="margin:0;">All products</h2>
+          <button class="btn secondary" id="exportProductsBtn">Export CSV</button>
+        </div>
         <table>
           <thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th></th></tr></thead>
           <tbody id="productRows"></tbody>
@@ -187,6 +210,9 @@
 
     <!-- INQUIRIES -->
     <div class="panel" id="panel-inquiries">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <button class="btn secondary" id="exportInquiriesBtn">Export CSV</button>
+      </div>
       <div id="inquiryList"></div>
     </div>
   </div>
@@ -232,7 +258,66 @@ function showDashboard(){
   loadProducts();
   loadAnalytics();
   loadInquiries();
+  loadOrders();
 }
+
+/* ---- CSV export ---- */
+function downloadCsv(filename, rows){
+  const esc = (v) => `"${String(v ?? "").replaceAll('"','""')}"`;
+  const csv = rows.map(row => row.map(esc).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---- orders ---- */
+let orders = [];
+async function loadOrders(){
+  const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending:false }).limit(200);
+  if (error){ console.error(error); return; }
+  orders = data || [];
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart); weekStart.setDate(weekStart.getDate() - 6);
+
+  const ordersToday = orders.filter(o => new Date(o.created_at) >= todayStart).length;
+  const ordersWeek = orders.filter(o => new Date(o.created_at) >= weekStart).length;
+  const revenue = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+  document.getElementById("statOrdersToday").textContent = ordersToday;
+  document.getElementById("statOrdersWeek").textContent = ordersWeek;
+  document.getElementById("statRevenue").textContent = "$" + revenue.toFixed(2);
+
+  const tbody = document.getElementById("orderRows");
+  if (!orders.length){
+    tbody.innerHTML = `<tr><td colspan="3">No orders logged yet — they're recorded automatically when a customer checks out.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = orders.slice(0, 50).map(o => {
+    const itemsText = (o.items || []).map(i => `${i.name} x${i.qty}`).join(", ");
+    return `
+      <tr>
+        <td>${new Date(o.created_at).toLocaleString()}</td>
+        <td>${escapeHtml(itemsText)}</td>
+        <td>$${Number(o.total).toFixed(2)}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+document.getElementById("exportOrdersBtn").addEventListener("click", ()=>{
+  const rows = [["Date","Items","Total"]];
+  orders.forEach(o => rows.push([
+    new Date(o.created_at).toLocaleString(),
+    (o.items||[]).map(i=>`${i.name} x${i.qty}`).join("; "),
+    Number(o.total).toFixed(2)
+  ]));
+  downloadCsv("orders.csv", rows);
+});
 
 /* ---- tab navigation ---- */
 document.querySelectorAll(".tabs-nav button").forEach(btn=>{
@@ -414,6 +499,15 @@ document.getElementById("saveBtn").addEventListener("click", async ()=>{
   }
 });
 
+document.getElementById("exportProductsBtn").addEventListener("click", ()=>{
+  const rows = [["Name","Category","Price","In stock","Description","Usage","Image URL"]];
+  products.forEach(p => rows.push([
+    p.name, p.category, Number(p.price).toFixed(2), p.in_stock===false?"No":"Yes",
+    p.description, p.usage_instructions, p.image_url
+  ]));
+  downloadCsv("products.csv", rows);
+});
+
 async function deleteProduct(id){
   if (!confirm("Delete this product? This can't be undone.")) return;
   const { error } = await sb.from("products").delete().eq("id", id);
@@ -422,10 +516,12 @@ async function deleteProduct(id){
 }
 
 /* ---- customer messages ---- */
+let inquiries = [];
 async function loadInquiries(){
   const { data, error } = await sb.from("inquiries").select("*").order("created_at", { ascending:false });
   if (error){ console.error(error); return; }
   const list = data || [];
+  inquiries = list;
   document.getElementById("statInquiries").textContent = list.filter(i => i.status !== "resolved").length;
 
   const el = document.getElementById("inquiryList");
@@ -462,6 +558,14 @@ async function loadInquiries(){
     });
   });
 }
+
+document.getElementById("exportInquiriesBtn").addEventListener("click", ()=>{
+  const rows = [["Date","Name","Contact","Message","Status"]];
+  inquiries.forEach(i => rows.push([
+    new Date(i.created_at).toLocaleString(), i.name, i.contact, i.message, i.status || "new"
+  ]));
+  downloadCsv("customer-messages.csv", rows);
+});
 
 function escapeHtml(str){
   if (str === null || str === undefined) return "";
