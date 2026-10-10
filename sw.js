@@ -7,6 +7,10 @@ const SHELL_FILES = [
   "./index.html",
   "./manifest.json",
   "./icon.svg",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon-512-maskable.png",
+  "./apple-touch-icon.png",
   "./og-image.png"
 ];
 
