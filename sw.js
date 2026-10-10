@@ -6,7 +6,8 @@ const CACHE_NAME = "hlc-shell-v1";
 const SHELL_FILES = [
   "./index.html",
   "./manifest.json",
-  "./icon.svg"
+  "./icon.svg",
+  "./og-image.png"
 ];
 
 self.addEventListener("install", (event) => {
