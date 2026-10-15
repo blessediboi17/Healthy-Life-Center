@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
   const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
   const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
   const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-  const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@example.com";
+  const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:healthylifecenter12@gmail.com";
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     res.status(500).json({ error: "Server is missing required environment variables. Check the README." });
