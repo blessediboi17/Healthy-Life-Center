@@ -335,6 +335,10 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.7a2 2 0 01-.4 2.1L8.1 9.6a16 16 0 006.3 6.3l1.1-1.2a2 2 0 012.1-.4c.9.3 1.8.5 2.7.6a2 2 0 011.7 2.1z"/></svg>
           Call: 0888360044
         </a>
+        <a href="#" id="notifyToggle" style="cursor:pointer;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+          <span id="notifyToggleLabel">Get notified about new products</span>
+        </a>
       </div>
       <div class="foot-col">
         <h4>Follow</h4>
@@ -400,9 +404,10 @@ const WHATSAPP_NUMBER = "231770523365"; // Healthy Life Center — 0770523365 wi
 const CURRENCY_SYMBOL = "$";
 const SOCIAL_LINKS = {
   instagram: "https://instagram.com/yourbusiness",
-  facebook: "https://www.facebook.com/share/1DcjtEMuyg/",
+  facebook: "https://facebook.com/yourbusiness",
   tiktok: "https://tiktok.com/@yourbusiness"
 };
+const VAPID_PUBLIC_KEY = "BBYHbd-IBS7M8IPsnVdrTGdMPEWrya3i71oJqw94h6a2OK_QPDlkLbXwaY35J1CGj-DsG4jU62zRcakB-l-DdHs";
 /* ================================================ */
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -664,11 +669,75 @@ document.getElementById("dismissInstall").addEventListener("click", ()=>{
   localStorage.setItem("hlc_install_dismissed", "1");
 });
 
+let swRegistration = null;
 if ("serviceWorker" in navigator){
-  window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  window.addEventListener("load", async ()=>{
+    try{
+      swRegistration = await navigator.serviceWorker.register("sw.js");
+      refreshNotifyButton();
+    } catch(e){}
   });
 }
+
+/* ---- push notification opt-in ---- */
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i=0;i<rawData.length;i++) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+function bufToBase64(buf){
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+
+async function refreshNotifyButton(){
+  const label = document.getElementById("notifyToggleLabel");
+  if (!("PushManager" in window) || !swRegistration){
+    document.getElementById("notifyToggle").style.display = "none";
+    return;
+  }
+  const existing = await swRegistration.pushManager.getSubscription();
+  label.textContent = existing ? "Notifications on \u2713" : "Get notified about new products";
+}
+
+document.getElementById("notifyToggle").addEventListener("click", async (e)=>{
+  e.preventDefault();
+  if (!swRegistration){ return; }
+  const label = document.getElementById("notifyToggleLabel");
+  const existing = await swRegistration.pushManager.getSubscription();
+
+  if (existing){
+    await sb.from("push_subscriptions").delete().eq("endpoint", existing.endpoint).then(()=>{}, ()=>{});
+    await existing.unsubscribe();
+    label.textContent = "Get notified about new products";
+    return;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted"){
+    label.textContent = "Notifications blocked — enable in browser settings";
+    return;
+  }
+
+  try{
+    const sub = await swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    const subJson = sub.toJSON();
+    await sb.from("push_subscriptions").upsert({
+      endpoint: subJson.endpoint,
+      p256dh: subJson.keys.p256dh,
+      auth: subJson.keys.auth
+    }, { onConflict: "endpoint" });
+    label.textContent = "Notifications on \u2713";
+  } catch(err){
+    console.error(err);
+    label.textContent = "Couldn't enable notifications";
+  }
+});
 
 function escapeHtml(str){
   if (str === null || str === undefined) return "";
