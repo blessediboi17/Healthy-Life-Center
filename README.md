@@ -8,8 +8,11 @@
 - `supabase-schema.sql` — sets up the database tables and storage bucket.
 - `manifest.json`, `sw.js`, `icon.svg` — make the storefront installable as an app (PWA).
 - `og-image.png` — the image shown when the storefront link is shared on WhatsApp, Facebook, etc.
+- `api/send-notification.js` — the one piece of server code in this project. Sends push announcements when the admin hits "Send" — static HTML alone can't do this part.
+- `package.json` — tells Vercel which small libraries that function needs (`web-push`, `@supabase/supabase-js`). You don't run anything locally; Vercel installs these automatically when it deploys.
+- `.env.example` / `vapid-keys.txt` — the keys the push feature needs. See §13 below.
 
-Everything is plain HTML/CSS/JS — no build step, no npm install. Edit and deploy as static files.
+Almost everything is plain HTML/CSS/JS — no build step, no local npm install. The one exception is `api/send-notification.js` (push announcements): Vercel installs its two small dependencies automatically from `package.json` at deploy time. You still don't run anything locally.
 
 ## 1. Create the Supabase project
 
@@ -82,8 +85,9 @@ The admin **Analytics** tab shows views today, this week, all-time, a 7-day bar 
 
 - **Android / Chrome / Edge**: a slim "Install Healthy Life Center" banner appears automatically after a visitor browses for a bit; tapping **Install** adds it to their home screen. Dismissing it hides it for that visitor going forward.
 - **iOS Safari**: Apple doesn't allow that automatic prompt. iPhone users install manually via **Share → Add to Home Screen** — worth a line on your social pages or a WhatsApp broadcast if that matters to you.
-- For best icon quality on all devices, export `icon.svg` as `icon-192.png` and `icon-512.png` (any online SVG-to-PNG converter works) and place them next to it — `manifest.json` already references them as fallbacks.
-- `sw.js` only caches the app shell (HTML/manifest/icon) for fast repeat loads — it never caches product data, so stock and prices are always current.
+- `icon-192.png`, `icon-512.png`, `icon-512-maskable.png`, and `apple-touch-icon.png` are already generated and included — no extra steps needed there.
+- `sw.js` only caches the app shell (HTML/manifest/icons) for fast repeat loads — it never caches product data, so stock and prices are always current.
+- If the install prompt still isn't showing after deploying, see the troubleshooting notes at the bottom of this README.
 
 **Note:** the install prompt and service worker only work once the site is served over `https://` (or `localhost` while testing) — they won't activate if you just double-click `index.html` on your computer.
 
@@ -91,9 +95,38 @@ The admin **Analytics** tab shows views today, this week, all-time, a 7-day bar 
 
 `og-image.png` (1200×630) is what shows up when someone pastes the storefront link into WhatsApp, Facebook, or Twitter/X, driven by the `og:` and `twitter:` meta tags at the top of `index.html`. If you rebrand later (colors, name), regenerate this image to match — it won't update on its own.
 
-## 12. Deploy
+## 13. Push notifications (admin announcements)
 
-Drop every file in this folder into a static host — [Vercel](https://vercel.com), Netlify, GitHub Pages, etc. No framework, no build command. Deploy the folder as-is, all files at the same level (so `manifest.json`, `sw.js`, `icon.svg`, and `og-image.png` sit next to `index.html`).
+Lets you send a notification straight to customers' phones — even if they don't have the site open — for things like "New stock: Fertility Tea back today!" This is the one feature in this project that needs real server-side code, because sending a push requires a private key that can never sit in a browser.
+
+**How it works:**
+- A customer taps **"Get notified about new products"** in the storefront footer, allows the browser's notification permission prompt once, and their device is saved to the `push_subscriptions` table.
+- You write a title + short message in admin's new **Announcements** tab and hit **Send to all subscribers**.
+- That calls `api/send-notification.js`, which sends the push to everyone subscribed and quietly removes any subscriptions that have gone stale (e.g. someone uninstalled).
+
+**Setup (one time):**
+1. In your **Vercel project → Settings → Environment Variables**, add:
+   | Key | Value |
+   |---|---|
+   | `SUPABASE_URL` | `https://fynvgznbxkohscslrjxg.supabase.co` |
+   | `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5bnZnem5ieGtvaHNjc2xyanhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDcwNDQsImV4cCI6MjEwNTcyMzA0NH0.ErH6-ps5Rt4FA39kzbwNSqobWEKrjuI0wAQ4mLVk5Z8` |
+   | `VAPID_PUBLIC_KEY` | `BLcyQDI2iLDPG-J_wEYWt509V8NrWwaubmxXMW8AcS6Gr1Xz8K9qLT51_pqsPp5LmHt7hLJxCeibrccsJ1AJzyQ` |
+   | `VAPID_PRIVATE_KEY` | `NcISpfBefH1o05jcYQv4ctLEvfNIihmpEbC8jdBdDyM` |
+   | `VAPID_SUBJECT` | `mailto:iboiblessed1@gmail.com` |
+
+   These two VAPID keys are a matched pair (also saved in `vapid-keys.txt`) — the public half is already hardcoded in `index.html`'s script. If you ever regenerate one side, you must update the other to match, or customer subscriptions will silently stop working. The private key is a real secret — it only ever goes into Vercel's environment variables, never into a file you commit or share further.
+2. Re-run `supabase-schema.sql` (safe to re-run — see §1) to add the `push_subscriptions` table.
+3. Redeploy on Vercel so it picks up `api/send-notification.js` and installs `web-push`.
+4. Test it: open the storefront, tap the notify link in the footer, allow notifications, then send yourself a test announcement from admin.
+
+**Limits worth knowing:**
+- **iPhone**: push notifications only work if the customer already installed the site to their home screen (Share → Add to Home Screen) and has iOS 16.4+. A plain Safari tab can't receive them — this is Apple's rule, not ours.
+- There's no character-count enforcement beyond the form's `maxlength`, but short titles/messages display best — most phones truncate long notification text.
+- This sends to *everyone* subscribed at once. There's no per-customer or per-category targeting (e.g. "only fertility-tea customers") — a reasonable next step if you want it later.
+
+## 14. Deploy
+
+Drop every file in this folder into a static host that supports serverless functions — [Vercel](https://vercel.com) is what this project is set up for. No build command to configure; Vercel auto-detects `api/send-notification.js` and installs its dependencies from `package.json`. Deploy the folder as-is, all files at the same level (so `manifest.json`, `sw.js`, the icon files, and `og-image.png` sit next to `index.html`, and `api/` stays as its own folder).
 
 Give customers the storefront link. Keep `/admin.html` private.
 
@@ -109,3 +142,10 @@ The admin dashboard's **Orders**, **Products**, and **Customer messages** tabs e
 
 - Colors/fonts/spacing: the `:root` CSS variables at the top of each `<style>` block.
 - If you later want true in-app payment instead of the WhatsApp handoff, that's a bigger addition (a payment gateway integration) — not included here.
+
+## Troubleshooting: install prompt not showing
+
+1. Confirm the latest `manifest.json`, `sw.js`, `index.html`, and the icon PNG files are actually deployed (check the deployment timestamp in Vercel).
+2. Run your live URL through [pagespeed.web.dev](https://pagespeed.web.dev) and check the installability notes — it will name the exact missing requirement, if any.
+3. If you ever added the site as a shortcut manually before, remove that icon and clear site data for the domain in your browser first — otherwise it may think it's "already handled" and skip the real prompt.
+4. The install prompt and push notifications both require real engagement time on the page (a few seconds of browsing) before the browser offers them — they won't fire the instant the page loads.
