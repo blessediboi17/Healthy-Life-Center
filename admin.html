@@ -116,6 +116,7 @@
       <button data-panel="orders">Orders</button>
       <button data-panel="products">Products</button>
       <button data-panel="inquiries">Customer messages</button>
+      <button data-panel="announce">Announcements</button>
     </div>
 
     <!-- ANALYTICS -->
@@ -125,6 +126,7 @@
         <div class="stat-card"><div class="num" id="statWeek">0</div><div class="label">Views, last 7 days</div></div>
         <div class="stat-card"><div class="num" id="statAll">0</div><div class="label">Views, all time</div></div>
         <div class="stat-card"><div class="num" id="statInquiries">0</div><div class="label">New messages</div></div>
+        <div class="stat-card"><div class="num" id="statSubscribers">0</div><div class="label">Notification subscribers</div></div>
       </div>
       <div class="bars">
         <h3>Page views — last 7 days</h3>
@@ -215,6 +217,27 @@
       </div>
       <div id="inquiryList"></div>
     </div>
+
+    <!-- ANNOUNCEMENTS -->
+    <div class="panel" id="panel-announce">
+      <div class="card-block">
+        <h2 class="serif" style="margin-top:0;">Send an announcement</h2>
+        <p style="color:#6b7a6e;font-size:14px;margin-top:0;">
+          Goes out as a push notification to every customer who opted in on the storefront —
+          <span id="subCountInline">0 subscribers</span> right now, even if they don't have the site open.
+        </p>
+        <label>Title</label>
+        <input id="a_title" type="text" placeholder="e.g. New stock just arrived!" maxlength="60">
+        <label>Message</label>
+        <textarea id="a_message" rows="3" placeholder="e.g. Fertility Tea and Prostate Tea are back in stock today." maxlength="160"></textarea>
+        <label>Link to open when tapped (optional)</label>
+        <input id="a_url" type="text" placeholder="Leave blank to open the storefront">
+        <div class="save-row">
+          <button class="btn" id="sendAnnounceBtn">Send to all subscribers</button>
+        </div>
+        <div class="status" id="announceStatus"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -259,7 +282,61 @@ function showDashboard(){
   loadAnalytics();
   loadInquiries();
   loadOrders();
+  loadSubscriberCount();
 }
+
+/* ---- announcements ---- */
+async function loadSubscriberCount(){
+  const { count, error } = await sb.from("push_subscriptions").select("*", { count:"exact", head:true });
+  if (error){ console.error(error); return; }
+  const n = count ?? 0;
+  document.getElementById("statSubscribers").textContent = n;
+  document.getElementById("subCountInline").textContent = n + (n === 1 ? " subscriber" : " subscribers");
+}
+
+document.getElementById("sendAnnounceBtn").addEventListener("click", async ()=>{
+  const statusEl = document.getElementById("announceStatus");
+  const title = document.getElementById("a_title").value.trim();
+  const message = document.getElementById("a_message").value.trim();
+  const url = document.getElementById("a_url").value.trim();
+
+  if (!title || !message){
+    statusEl.textContent = "Title and message are both required.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  statusEl.textContent = "Sending…";
+  statusEl.className = "status";
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){
+    statusEl.textContent = "Your session expired — please log out and back in.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  try{
+    const res = await fetch("/api/send-notification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, message, url, accessToken: session.access_token })
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Something went wrong.");
+
+    statusEl.textContent = `Sent to ${result.sent} of ${result.total} subscribers.`;
+    statusEl.className = "status ok";
+    document.getElementById("a_title").value = "";
+    document.getElementById("a_message").value = "";
+    document.getElementById("a_url").value = "";
+    loadSubscriberCount();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't send: " + err.message;
+    statusEl.className = "status err";
+  }
+});
 
 /* ---- CSV export ---- */
 function downloadCsv(filename, rows){
