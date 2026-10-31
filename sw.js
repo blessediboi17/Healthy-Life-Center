@@ -33,8 +33,9 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache Supabase API calls — always go live for product data.
-  if (url.hostname.endsWith("supabase.co")) return;
+  // Only handle our own files. Everything cross-origin (Supabase data, the
+  // Supabase library, Google ad scripts) goes straight to the network.
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
