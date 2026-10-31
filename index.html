@@ -9,6 +9,7 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://healthy-life-center.vercel.app/">
 <meta name="google-site-verification" content="rqcKXpeuBPZWYr8MFtPsM4VivoAZiJyeDFfZz--o7Ec" />
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2136738951294370" crossorigin="anonymous"></script>
 <meta property="og:title" content="Healthy Life Center — Herbal Remedies in Johnsonville, Liberia">
 <meta property="og:description" content="Fertility tea, prostate health, heart health and more. Order on WhatsApp, we deliver across Monrovia and Johnsonville.">
 <meta property="og:type" content="website">
@@ -273,6 +274,9 @@
   .foot-col a{display:flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:8px;}
   .foot-legal{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:#6b7a6e;display:flex;gap:18px;flex-wrap:wrap;}
   .foot-legal a{text-decoration:underline;}
+  .ad-slot{margin:8px 0 24px;text-align:center;}
+  .ad-slot:empty{display:none;}
+  .ad-slot .ad-label{font-size:11px;color:#8a958c;margin-bottom:4px;}
   .about-strip{padding:28px 0;border-top:1px solid var(--line);}
   .about-strip p{font-size:14px;color:#4b5a4e;max-width:60ch;margin:0;}
 
@@ -331,6 +335,8 @@
   </div>
   <div class="tabs" id="tabs"></div>
   <div class="grid" id="grid"><div class="empty-msg">Loading products…</div></div>
+
+  <div class="ad-slot" id="adSlot"></div>
 
   <div class="support-section">
     <div class="box">
@@ -443,7 +449,17 @@ const SOCIAL_LINKS = {
   tiktok: "https://tiktok.com/@yourbusiness"
 };
 const VAPID_PUBLIC_KEY = "BLcyQDI2iLDPG-J_wEYWt509V8NrWwaubmxXMW8AcS6Gr1Xz8K9qLT51_pqsPp5LmHt7hLJxCeibrccsJ1AJzyQ";
+const ADSENSE_CLIENT = "ca-pub-2136738951294370";
+const AD_SLOT_ID = ""; // paste the numeric slot ID from AdSense -> Ads -> By ad unit once approved; leave blank to show no manual ad
 /* ================================================ */
+
+if (AD_SLOT_ID){
+  const slotEl = document.getElementById("adSlot");
+  slotEl.innerHTML = `
+    <div class="ad-label">Advertisement</div>
+    <ins class="adsbygoogle" style="display:block" data-ad-client="${ADSENSE_CLIENT}" data-ad-slot="${AD_SLOT_ID}" data-ad-format="auto" data-full-width-responsive="true"></ins>`;
+  try{ (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+}
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
